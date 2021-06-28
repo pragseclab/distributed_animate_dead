@@ -52,7 +52,8 @@ class WraithOrchestrator {
             $message_body = json_decode($msg->body, true);
             // Merge coverage info
             $coverage_info = $message_body['coverage_info'] ?? [];
-            $priority = $this->merge_coverage($coverage_info);
+            $new_branch_coverage = $message_body['new_branch_coverage'] ?? [];
+            $priority = $this->merge_coverage($coverage_info, $new_branch_coverage);
             if (isset($message_body) && array_key_exists('init_env', $message_body)) {
                 // Received a reanimation task
                 echo sprintf(' [%s] Received reanimation state.', date("h:i:sa")), PHP_EOL;
@@ -77,7 +78,7 @@ class WraithOrchestrator {
             try {
                 $this->channel->wait(null, false, 100);
             }
-            catch (AMQPTimeoutException $exception) {
+            catch (Exception $e) {
                 echo 'Queue read timeout exception, retrying in 2 seconds...'.PHP_EOL;
                 sleep(2);
             }
@@ -120,24 +121,40 @@ class WraithOrchestrator {
         return true;
     }
 
-    protected function merge_coverage($new_coverage_info) {
+    protected function merge_coverage($new_coverage_info, $new_branch_coverage = []) {
         $base = count($this->overall_coverage_info);
+        list($new_lines, $this->overall_coverage_info) = $this->merge_coverage_arrays($new_coverage_info, $this->overall_coverage_info);
+        $new_branch_lines = $this->merge_coverage_arrays($new_branch_coverage, $this->overall_coverage_info)[0];
+        $parent_coverage_priority = ($new_lines >= $base ? 100 : ($new_lines > 0 ? min([($new_lines * 100 / $base) + 1, 100]) : 0));
+        if ($new_branch_lines > 0) {
+            return min([$parent_coverage_priority + $new_branch_lines, 100]);
+        }
+        return $parent_coverage_priority;
+    }
+
+    /**
+     * @param $new_coverage
+     * @param $base_coverage
+     * @return array [new_lines, merged_overall_coverage]
+     */
+    private function merge_coverage_arrays($new_coverage, $base_coverage): array
+    {
         $new_lines = 0;
-        foreach ($new_coverage_info as $filename => $lines) {
-            if (!array_key_exists($filename, $this->overall_coverage_info)) {
-                $this->overall_coverage_info[$filename] = $lines;
+        foreach ($new_coverage as $filename => $lines) {
+            if (!array_key_exists($filename, $base_coverage)) {
+                $base_coverage[$filename] = $lines;
                 $new_lines += sizeof($lines);
             }
             else {
                 foreach ($lines as $line => $covered) {
-                    if(!array_key_exists($line, $this->overall_coverage_info[$filename])) {
-                        $this->overall_coverage_info[$filename][$line] = $covered;
+                    if(!array_key_exists($line, $base_coverage[$filename])) {
+                        $base_coverage[$filename][$line] = $covered;
                         $new_lines++;
                     }
                 }
             }
         }
-        return $new_lines >= $base ? 100 : ($new_lines * 100 / $base);
+        return [$new_lines, $base_coverage];
     }
 
     protected function parse_cli_params(int $argc, array $argv, $connection, $channel, $execution_id) {

@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
         # sysvshm \
         # sysvsem \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug
+    # && pecl install xdebug \
+    # && docker-php-ext-enable xdebug
 WORKDIR "/home/ubuntu/client"
 #CMD ["php", "WraithOrchestrator.php", "-d"]

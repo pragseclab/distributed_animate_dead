@@ -48,7 +48,7 @@ class AnimateDeadWorker implements IAnimateDeadWorker {
         echo sprintf(' [%s] Sent the termination info "%s" to the queue [%s].'.PHP_EOL, date("h:i:sa"), $task_id, MANAGER_QUEUE);
     }
 
-    public function add_reanimation_task($init_env, $httpverb, $targetfile, $reanimationarray, $branch_filename, $branch_linenumber, $line_coverage_hash, $symbol_table_hash, $coverage_info, $execution_id) {
+    public function add_reanimation_task($init_env, $httpverb, $targetfile, $reanimationarray, $branch_filename, $branch_linenumber, $line_coverage_hash, $symbol_table_hash, $coverage_info, $execution_id, $new_branch_coverage) {
         $task_id = uniqid();
         // Remove $ini_env['GLOBALS']['GLOBALS'] recursion before json_encode
         unset($init_env['GLOBALS']['GLOBALS']);
@@ -61,7 +61,8 @@ class AnimateDeadWorker implements IAnimateDeadWorker {
                    'line_coverage_hash' => $line_coverage_hash,
                    'symbol_table_hash' => $symbol_table_hash,
                    'coverage_info' => $coverage_info,
-                   'execution_id' => $execution_id];
+                   'execution_id' => $execution_id,
+                   'new_branch_coverage' => $new_branch_coverage];
 
         $msg = new AMQPMessage(json_encode($params), ['delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT, 'correlation_id' => $task_id]);
 
