@@ -61,6 +61,7 @@ class WraithOrchestrator {
             $coverage_info = $message_body['coverage_info'] ?? [];
             $new_branch_coverage = $message_body['new_branch_coverage'] ?? [];
             $parent_priority = $message_body['current_priority'] ?? 0;
+            $execution_id = $message_body['execution_id'] ?? 0;
             $parent_id = $message_body['parent_id'] ?? 0;
             if (isset($message_body) && array_key_exists('init_env', $message_body)) {
                 list($priority, $new_files, $new_lines, $lookahead) = $this->merge_coverage('reanimations', $coverage_info, $new_branch_coverage, $parent_priority);
@@ -68,8 +69,8 @@ class WraithOrchestrator {
                 echo sprintf(' [%s] Received reanimation state for %s.', date("h:i:sa"), $message_body['execution_id'] ?? 'none'), PHP_EOL;
                 $reanimation_state = $message_body;
                 $reanimation_state_object = new ReanimationState($reanimation_state['init_env'], $reanimation_state['httpverb'], $reanimation_state['reanimation_array'], $reanimation_state['targetfile'], $reanimation_state['branch_linenumber'], $reanimation_state['line_coverage_hash'], $reanimation_state['symbol_table_hash']);
-                $this->worker->add_execution_task($priority, $task_id, $parent_id, $reanimation_state_object->init_env, $reanimation_state_object->httpverb, $reanimation_state_object->targetfile, $reanimation_state_object->reanimation_array, $reanimation_state_object->linenumber, $reanimation_state_object->line_coverage_hash, $reanimation_state_object->symbol_table_hash, $message_body['execution_id'], $message_body['extended_logs_emulation_mode']);
-                $this->log_execution_to_db($task_id, $parent_id, $priority, $message_body['execution_id'], false, $message_body['branch_filename'], $message_body['branch_linenumber'], $lookahead, $new_files, $new_lines);
+                $this->worker->add_execution_task($priority, uniqid(), $task_id, $reanimation_state_object->init_env, $reanimation_state_object->httpverb, $reanimation_state_object->targetfile, $reanimation_state_object->reanimation_array, $reanimation_state_object->linenumber, $reanimation_state_object->line_coverage_hash, $reanimation_state_object->symbol_table_hash, $message_body['execution_id'], $message_body['extended_logs_emulation_mode']);
+                $this->log_execution_to_db($task_id, $execution_id, $priority, $message_body['execution_id'], false, $message_body['branch_filename'], $message_body['branch_linenumber'], $lookahead, $new_files, $new_lines);
             }
             else {
                 // Received a termination task
